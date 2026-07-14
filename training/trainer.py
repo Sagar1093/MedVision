@@ -36,11 +36,11 @@ def train_one_epoch(
 
             loss = criterion(outputs, labels)
 
-            scaler.scale(loss).backward()
+        scaler.scale(loss).backward()
 
-            scaler.step(optimizer)
+        scaler.step(optimizer)
 
-            scaler.update()
+        scaler.update()
 
         running_loss += loss.item()
         _,predicted = torch.max(outputs,1)
@@ -148,11 +148,14 @@ def fit(
         print(f"Train Acc  : {train_acc:.2f}%")
         print(f"Val Loss   : {val_loss:.4f}")
         print(f"Val Acc    : {val_acc:.2f}%")
+
         scheduler.step(val_acc)
+
         history["learning_rate"].append(optimizer.param_groups[0]["lr"])
+        
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-
+            print(f"The best model is {best_val_acc:.2f}%")
             early_stop_counter = 0
 
             torch.save(

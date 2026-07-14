@@ -4,6 +4,7 @@ from configs.config import *
 from utils.dataloaders import get_dataloaders
 from training.trainer import fit
 from pathlib import Path
+from utils.class_weights import get_class_weights
 
 
 def main():
@@ -28,7 +29,15 @@ def main():
 
     print(model.fc)
 
-    criterion = torch.nn.CrossEntropyLoss()
+    class_weights = get_class_weights(
+        train_loader.dataset,
+        DEVICE
+    )
+    print("Class Weights:", class_weights)
+
+    criterion = torch.nn.CrossEntropyLoss(
+        weight=class_weights
+    )
 
     optimizer = torch.optim.Adam(
         model.parameters(),
