@@ -1,6 +1,6 @@
 import torch
 from torchvision import models
-
+from models.model_factory import get_model
 from configs.config import *
 from utils.dataloaders import get_dataloaders
 from evaluation.evaluate import evaluate_model
@@ -17,19 +17,15 @@ def main():
     _, _, test_loader = get_dataloaders(
         batch_size=BATCH_SIZE
     )
-    model = models.resnet50(
-        weights=None
-    )
-
-    model.fc = torch.nn.Linear(
-        model.fc.in_features,
-        NUM_CLASSES
-    )
+    model = get_model(
+    MODEL_NAME,
+    NUM_CLASSES
+    ).to(DEVICE)
 
     model = model.to(DEVICE)
 
     checkpoint = torch.load(
-        CHECKPOINT_DIR / "resnet50_best.pth",
+        CHECKPOINT_DIR / f"{MODEL_NAME}_best.pth",
         map_location=DEVICE,
     )
 

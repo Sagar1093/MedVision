@@ -21,3 +21,5 @@ EARLY_STOPPING_PATIENCE = 5
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
+# resnet50,densenet121,efficientnet_b3
+MODEL_NAME = "efficientnet_b3"

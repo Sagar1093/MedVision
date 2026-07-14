@@ -1,10 +1,11 @@
 import torch
-from torchvision import models
+
 from configs.config import *
 from utils.dataloaders import get_dataloaders
 from training.trainer import fit
-from pathlib import Path
+
 from utils.class_weights import get_class_weights
+from models.model_factory import get_model
 
 
 def main():
@@ -17,17 +18,12 @@ def main():
     print("Train Images :", len(train_loader.dataset))
     print("Validation Images :", len(val_loader.dataset))
 
-    weights = models.ResNet50_Weights.DEFAULT
+   
 
-    model = models.resnet50(weights=weights)
-
-    model.fc = torch.nn.Linear(
-        model.fc.in_features,
+    model = get_model(
+        MODEL_NAME,
         NUM_CLASSES
-    )
-    model = model.to(DEVICE)
-
-    print(model.fc)
+    ).to(DEVICE)
 
     class_weights = get_class_weights(
         train_loader.dataset,
@@ -49,7 +45,7 @@ def main():
         factor=LR_FACTOR,
         patience=LR_PATIENCE
     )
-    checkpoint = CHECKPOINT_DIR/"resnet50_best.pth"
+    checkpoint = checkpoint = CHECKPOINT_DIR / f"{MODEL_NAME}_best.pth"
     checkpoint.parent.mkdir(parents=True,exist_ok=True)
 
     history = fit(
