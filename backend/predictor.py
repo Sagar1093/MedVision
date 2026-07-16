@@ -1,6 +1,7 @@
 import torch
 from models.model_factory import get_model
 from configs.config import *
+from backend.gradcam import Gradcam_genarator,image_to_base64
 
 class Predictor:
     def __init__(self):
@@ -20,17 +21,27 @@ class Predictor:
 
         self.model.eval()
 
+        self.gradcam = Gradcam_genarator(self.model)
+
+
         self.classes = [
             "Normal",
             "Pneumonia",
             "Tuberculosis"
         ]
 
-    @torch.no_grad()
-    def predict(self,image_tensor):
+    
+    def predict(self,image_tensor,rgb_image):
         image_tensor = image_tensor.to(DEVICE)
 
         outputs = self.model(image_tensor)
+
+        heatmap = self.gradcam.generate(
+            image_tensor,
+            rgb_image
+        )
+
+        heatmap_base64 = image_to_base64(heatmap)
 
         probabilites = torch.softmax(
             outputs,
@@ -46,5 +57,6 @@ class Predictor:
             "probabilities": {
                 self.classes[i]: round(probabilites[0][i].item() * 100,2)
                 for i in range(NUM_CLASSES)
-            }
+            },
+            "heatmap":heatmap_base64
         }

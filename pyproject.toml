@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.139.0",
+    "grad-cam>=1.5.5",
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.0",
     "notebook>=7.6.0",
     "numpy>=2.5.1",
+    "opencv-python>=5.0.0.93",
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "python-multipart>=0.0.32",

@@ -22,9 +22,9 @@ def health():
 async def predict(file:UploadFile = File(...)):
     image_bytes = await file.read()
 
-    image = preprocess_image(image_bytes)
+    image_tensor,rgb_image = preprocess_image(image_bytes)
 
-    result = predictor.predict(image)
+    result = predictor.predict(image_tensor,rgb_image)
 
     return result
     
