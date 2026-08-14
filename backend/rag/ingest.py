@@ -21,17 +21,23 @@ text_splitter = RecursiveCharacterTextSplitter(
 def load_documents():
     pdf_files = list(DOCUMENTS_PATH.rglob("*.pdf"))
     documents = []
-
+    
     for pdf_path in pdf_files:
         loader = PyPDFLoader(str(pdf_path))
         pages = loader.load()
 
         disease = pdf_path.parent.name
         source = pdf_path.name
+        
+
+    
+
+        
 
         for page in pages:
             page.metadata["disease"] = disease
             page.metadata["source"] = source
+    
 
         documents.extend(pages)
 

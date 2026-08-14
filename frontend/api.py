@@ -1,6 +1,7 @@
 import requests
 
 API_URL = "http://127.0.0.1:8000/predict"
+BASE_URL = "http://127.0.0.1:8000"
 
 def predict_image(image_file):
     files = {
@@ -15,9 +16,23 @@ def predict_image(image_file):
         API_URL,
         files=files
     )
-    print("Status Code:", response.status_code)
-    print("Response Body:", response.text)
+    
 
+    response.raise_for_status()
+
+    return response.json()
+
+def chat(question,prediction):
+    response = requests.post(
+        f"{BASE_URL}/chat",
+        json={
+            "question":question,
+            "prediction":prediction
+        }
+    )
+    print("Question:", question)
+    print("Prediction:", prediction)
+    print(response.json())
     response.raise_for_status()
 
     return response.json()

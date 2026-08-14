@@ -5,14 +5,20 @@ from backend.rag.embeddings import get_embeddings
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 DB_PATH = PROJECT_ROOT/"db"
-
+VECTOR_STORE = None
 def load_vector_store():
-    vector_store = Chroma(
-        persist_directory=str(DB_PATH),
-        embedding_function=get_embeddings()
-    )
+    global VECTOR_STORE
 
-    return vector_store
+    if VECTOR_STORE is None:
+        print("Loading Chroma DB")
+
+        VECTOR_STORE = Chroma(
+            persist_directory=str(DB_PATH),
+            embedding_function=get_embeddings()
+        )
+        print("Chroma DB loaded")
+
+    return VECTOR_STORE
 
 def get_retriever():
     vector_store = load_vector_store()
@@ -22,15 +28,4 @@ def get_retriever():
     )
     return retriever
 
-if __name__=="__main__":
-    retriever = get_retriever()
 
-    docs = retriever.invoke(
-        "What are the symptoms of pneumonia"
-    )
-    for i,doc in enumerate(docs):
-        print("="*60)
-
-        print(doc.metadata)
-        print()
-        print(doc.page_content[:300])
