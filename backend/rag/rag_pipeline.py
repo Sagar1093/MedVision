@@ -119,6 +119,58 @@ def ask_question(question,prediction=None):
         "sources":sources
     }
 
+
+def stream_question(question, prediction=None):
+    """Stream the Gemini response while using the same RAG pipeline."""
+
+    docs = retrieve_context(
+        question=question
+    )
+
+    context_parts = []
+
+    for i, doc in enumerate(docs, start=1):
+
+        source = doc.metadata["source"]
+        page = doc.metadata["page"] + 1
+
+        context_parts.append(
+            f"""
+            Source {i}
+            File: {source}
+            Page: {page}
+
+            {doc.page_content}
+            """
+        )
+
+    context = "\n\n----------\n\n".join(context_parts)
+
+    prompt = ChatPromptTemplate.from_template(PROMPT)
+
+    llm = get_llm()
+
+    for chunk in llm.stream(
+        prompt.format(
+            prediction=prediction,
+            context=context,
+            question=question
+        )
+    ):
+        if chunk.content:
+
+            if isinstance(chunk.content, list):
+
+                for block in chunk.content:
+                    if (
+                        isinstance(block, dict)
+                        and block.get("type") == "text"
+                    ):
+                        yield block["text"]
+
+            else:
+                yield chunk.content
+
 if __name__ == "__main__":
     result = ask_question(question="how did cnn predict the disease",
                           prediction="tuberculosis")

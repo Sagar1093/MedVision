@@ -44,13 +44,16 @@ if uploaded_file:
 
     if st.button("Predict"):
 
-        with st.spinner("Analyzing X-Ray..."):
+        try:
+            with st.spinner("Analyzing X-Ray..."):
+                prediction_result = predict_image(uploaded_file)
 
-            prediction_result = predict_image(uploaded_file)
+            st.session_state.prediction_result = prediction_result
+            st.session_state.uploaded_image = image
+            st.session_state.messages = []
 
-        st.session_state.prediction_result = prediction_result
-        st.session_state.uploaded_image = image
-        st.session_state.messages = []
+        except Exception as e:
+            st.error(str(e))
 
 
 
@@ -132,38 +135,43 @@ if st.session_state.prediction_result is not None:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.spinner("Thinking..."):
+        try:
+            with st.spinner("Thinking..."):
 
-            chat_result = chat(
-                question=prompt,
-                prediction=result["prediction"]
+                chat_result = chat(
+                    question=prompt,
+                    prediction=result["prediction"]
+                )
+
+            answer = chat_result["answer"]
+
+        except Exception as e:
+            st.error(str(e))
+            answer = None
+        if answer:
+            with st.chat_message("assistant"):
+
+                st.markdown(answer)
+
+                if chat_result["sources"]:
+
+                    with st.expander("Sources"):
+
+                        for source in chat_result["sources"]:
+
+                            st.write(
+                                f"**{source['id']}**  \n"
+                                f"{source['source']} "
+                                f"(Page {source['page']})"
+                            )
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                    "sources": chat_result["sources"]
+                }
             )
-
-        answer = chat_result["answer"]
-
-        with st.chat_message("assistant"):
-
-            st.markdown(answer)
-
-            if chat_result["sources"]:
-
-                with st.expander("Sources"):
-
-                    for source in chat_result["sources"]:
-
-                        st.write(
-                            f"**{source['id']}**  \n"
-                            f"{source['source']} "
-                            f"(Page {source['page']})"
-                        )
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-                "sources": chat_result["sources"]
-            }
-        )
 
 else:
 

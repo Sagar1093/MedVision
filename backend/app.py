@@ -1,8 +1,17 @@
-from fastapi import FastAPI,UploadFile,File
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
+
 from backend.predictor import Predictor
 from backend.utils import preprocess_image
-from backend.schemas import PredictionResponse,ChatRequest,ChatResponse
-from backend.rag.rag_pipeline import ask_question
+from backend.schemas import (
+    PredictionResponse,
+    ChatRequest,
+    ChatResponse
+)
+from backend.rag.rag_pipeline import (
+    ask_question,
+    stream_question
+)
 
 app = FastAPI(
     title="MedVision API",
@@ -37,6 +46,18 @@ async def chat(request:ChatRequest):
     )
 
     return result
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+
+    return StreamingResponse(
+        stream_question(
+            question=request.question,
+            prediction=request.prediction
+        ),
+        media_type="text/plain"
+    )
     
 
 
