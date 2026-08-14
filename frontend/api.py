@@ -1,5 +1,6 @@
 import requests
 
+
 API_URL = "http://127.0.0.1:8000/predict"
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -39,14 +40,21 @@ def predict_image(image_file):
 
     except requests.exceptions.HTTPError:
         try:
-            detail = response.json().get("detail", "Backend error")
+            detail = response.json().get(
+                "detail",
+                "Backend error"
+            )
         except Exception:
             detail = "Backend returned an error."
 
-        raise Exception(f"Prediction failed: {detail}")
+        raise Exception(
+            f"Prediction failed: {detail}"
+        )
 
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Prediction request failed: {e}")
+        raise Exception(
+            f"Prediction request failed: {e}"
+        )
 
 
 def chat(question, prediction):
@@ -77,11 +85,43 @@ def chat(question, prediction):
 
     except requests.exceptions.HTTPError:
         try:
-            detail = response.json().get("detail", "Backend error")
+            detail = response.json().get(
+                "detail",
+                "Backend error"
+            )
         except Exception:
             detail = "Backend returned an error."
 
-        raise Exception(f"Chat request failed: {detail}")
+        raise Exception(
+            f"Chat request failed: {detail}"
+        )
 
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Chat request failed: {e}")
+        raise Exception(
+            f"Chat request failed: {e}"
+        )
+
+
+def stream_chat(question, prediction):
+
+    response = requests.post(
+        f"{BASE_URL}/chat/stream",
+        json={
+            "question": question,
+            "prediction": prediction
+        },
+        stream=True,
+        timeout=(10, 60)
+    )
+
+    response.raise_for_status()
+
+    try:
+        for line in response.iter_lines(
+            decode_unicode=True
+        ):
+            if line:
+                yield line
+
+    finally:
+        response.close()

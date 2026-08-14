@@ -2,8 +2,10 @@ import streamlit as st
 from PIL import Image
 from io import BytesIO
 import base64
+import json
 
-from api import predict_image, chat
+
+from api import predict_image,stream_chat
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -135,41 +137,53 @@ if st.session_state.prediction_result is not None:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        try:
-            with st.spinner("Thinking..."):
+        
 
-                chat_result = chat(
+        with st.chat_message("assistant"):
+
+            answer_placeholder = st.empty()
+
+            answer = ""
+            sources = []
+
+            for line in stream_chat(
                     question=prompt,
                     prediction=result["prediction"]
-                )
+                ):
 
-            answer = chat_result["answer"]
+                data = json.loads(line)
 
-        except Exception as e:
-            st.error(str(e))
-            answer = None
-        if answer:
-            with st.chat_message("assistant"):
+                if data["type"] == "sources":
 
-                st.markdown(answer)
+                    sources = data["sources"]
 
-                if chat_result["sources"]:
+                elif data["type"] == "token":
 
-                    with st.expander("Sources"):
+                    answer += data["content"]
 
-                        for source in chat_result["sources"]:
+                    answer_placeholder.markdown(answer)
 
-                            st.write(
-                                f"**{source['id']}**  \n"
-                                f"{source['source']} "
-                                f"(Page {source['page']})"
-                            )
+                elif data["type"] == "done":
 
-            st.session_state.messages.append(
+                    break
+
+        if sources:
+
+                with st.expander("Sources"):
+
+                    for source in sources:
+
+                        st.write(
+                            f"**{source['id']}**  \n"
+                            f"{source['source']} "
+                            f"(Page {source['page']})"
+                        )
+
+        st.session_state.messages.append(
                 {
                     "role": "assistant",
                     "content": answer,
-                    "sources": chat_result["sources"]
+                    "sources": sources
                 }
             )
 

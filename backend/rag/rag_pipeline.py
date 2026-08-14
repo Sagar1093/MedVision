@@ -1,6 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
+
 from backend.rag.retriever import load_vector_store
 from backend.rag.llm import get_llm
+
 
 PROMPT = """
 You are MedVision AI, an intelligent medical assistant.
@@ -28,42 +30,32 @@ User Question:
 """
 
 
-def retrieve_context(question, disease=None, k=5):
+def retrieve_context(question, k=4):
     """
-    Retrieve the most relevant chunks from Chroma.
-    Optionally filter by disease.
+    Retrieve the most relevant and diverse chunks from Chroma using MMR.
     """
 
     vector_store = load_vector_store()
 
     retriever = vector_store.as_retriever(
-            search_type = "mmr",
-            search_kwargs = {
-                            "k":5,
-                            "fetch_k":15,
-                            "lambda_mult":0.7
-                            
-                        }
-           
-        )
+        search_type="mmr",
+        search_kwargs={
+            "k": k,
+            "fetch_k": 15,
+            "lambda_mult": 0.7
+        }
+    )
 
-    docs = retriever.invoke(question)
+    return retriever.invoke(question)
 
 
-    return docs
-
-
-
-
-def ask_question(question,prediction=None):
-    """Full RAG Pipeline"""
-
-    docs = retrieve_context(question)
-    
-    prompt = ChatPromptTemplate.from_template(PROMPT)
+def prepare_context(docs):
+    """
+    Prepare retrieved documents and source information
+    for the LLM.
+    """
 
     context_parts = []
-
     sources = []
     seen = set()
 
@@ -74,82 +66,112 @@ def ask_question(question,prediction=None):
 
         context_parts.append(
             f"""
-            Source {i}
-            File: {source}
-            Page: {page}
+Source {i}
+File: {source}
+Page: {page}
 
-            {doc.page_content}
-            """
+{doc.page_content}
+"""
         )
 
         if (source, page) not in seen:
+
             seen.add((source, page))
 
-            sources.append({
-                "id": f"Source {i}",
-                "source": source,
-                "page": page
-            })
+            sources.append(
+                {
+                    "id": f"Source {i}",
+                    "source": source,
+                    "page": page
+                }
+            )
 
-    context = "\n\n----------\n\n".join(context_parts)
+    context = "\n\n----------\n\n".join(
+        context_parts
+    )
+
+    return context, sources
+
+
+def extract_content(content):
+    """
+    Extract text from Gemini's response content.
+    """
+
+    if isinstance(content, list):
+
+        answer = ""
+
+        for block in content:
+
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "text"
+            ):
+                answer += block["text"]
+
+        return answer
+
+    return content
+
+
+def ask_question(question, prediction=None):
+    """
+    Run the complete RAG pipeline and return
+    the final answer with sources.
+    """
+
+    docs = retrieve_context(question)
+
+    context, sources = prepare_context(docs)
+
+    prompt = ChatPromptTemplate.from_template(
+        PROMPT
+    )
 
     llm = get_llm()
 
     response = llm.invoke(
-            prompt.format(
-                prediction=prediction,
-                context=context,
-                question=question
-            )
+        prompt.format(
+            prediction=prediction,
+            context=context,
+            question=question
         )
+    )
 
-    content = response.content
-
-    if isinstance(content,list):
-        answer = ""
-
-        for block in content:
-            if isinstance(block,dict) and block.get("type") == "text":
-                answer += block["text"]
-    else:
-        answer = content
+    answer = extract_content(
+        response.content
+    )
 
     return {
-        "answer":answer,
-        "sources":sources
+        "answer": answer,
+        "sources": sources
     }
 
 
 def stream_question(question, prediction=None):
-    """Stream the Gemini response while using the same RAG pipeline."""
+    """
+    Stream the Gemini response while returning
+    retrieved sources.
+    """
 
-    docs = retrieve_context(
-        question=question
+    docs = retrieve_context(question)
+
+    context, sources = prepare_context(docs)
+
+    prompt = ChatPromptTemplate.from_template(
+        PROMPT
     )
-
-    context_parts = []
-
-    for i, doc in enumerate(docs, start=1):
-
-        source = doc.metadata["source"]
-        page = doc.metadata["page"] + 1
-
-        context_parts.append(
-            f"""
-            Source {i}
-            File: {source}
-            Page: {page}
-
-            {doc.page_content}
-            """
-        )
-
-    context = "\n\n----------\n\n".join(context_parts)
-
-    prompt = ChatPromptTemplate.from_template(PROMPT)
 
     llm = get_llm()
 
+
+    yield {
+        "type": "sources",
+        "sources": sources
+    }
+
+    # Stream Gemini response.
     for chunk in llm.stream(
         prompt.format(
             prediction=prediction,
@@ -157,30 +179,31 @@ def stream_question(question, prediction=None):
             question=question
         )
     ):
-        if chunk.content:
 
-            if isinstance(chunk.content, list):
+        if not chunk.content:
+            continue
 
-                for block in chunk.content:
-                    if (
-                        isinstance(block, dict)
-                        and block.get("type") == "text"
-                    ):
-                        yield block["text"]
+        if isinstance(chunk.content, list):
 
-            else:
-                yield chunk.content
+            for block in chunk.content:
 
-if __name__ == "__main__":
-    result = ask_question(question="how did cnn predict the disease",
-                          prediction="tuberculosis")
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "text"
+                ):
+                    yield {
+                        "type": "token",
+                        "content": block["text"]
+                    }
 
-    print("="*100)
-    print(result["answer"])
+        else:
 
-    print()
+            yield {
+                "type": "token",
+                "content": chunk.content
+            }
 
-    for source in result["sources"]:
-        print(f"[{source['id']}]"
-              f"{source['source']}"
-              f"(Page {source['page']})")
+
+    yield {
+        "type": "done"
+    }
