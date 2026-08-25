@@ -171,7 +171,7 @@ def fit(
         else:
             early_stop_counter += 1
             
-            if early_stop_counter >= EARLY_STOPPING_PATIENCE:
-                print("Early Stopping Triggered")
-                break
+            # if early_stop_counter >= EARLY_STOPPING_PATIENCE:
+            #     print("Early Stopping Triggered")
+            #     break
     return history

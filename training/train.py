@@ -9,6 +9,10 @@ from models.model_factory import get_model
 
 
 def main():
+    
+    DEVICE = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
 
     print(f"Using Device: {DEVICE}")
     train_loader, val_loader, test_loader = get_dataloaders(
